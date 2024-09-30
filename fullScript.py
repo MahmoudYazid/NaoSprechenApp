@@ -1,14 +1,16 @@
+# -*- coding: utf-8 -*-
 import requests
 import speech_recognition as sr
 from naoqi import ALProxy 
 
-# -*- coding: utf-8 -*-
+
 
 def ask_gpt(prompt):
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyC7uO2DyDrB7HWUFXxLZ5ZxE7NNvtrbHIE"
         headers = {
             "Content-Type": "application/json"
         }
+        prompt = prompt + " "+"Bitte antworten Sie kurz und ohne ö oder ü oder ä "
         data = {"contents": [{"parts": [{"text": "{}".format(prompt)}]}]}
         
         response = requests.post(url, headers=headers, json=data)
@@ -33,8 +35,12 @@ def recognize_speech():
             try:
                 # Recognize speech using Google Web Speech API
                 text = recognizer.recognize_google(audio, language='de-DE')
-               
-                return text
+                
+                print(text)
+                if(text is not list or tuple):
+                    return str(text).encode('utf-8') 
+                else:
+                     return "das ist ein list"
             except sr.UnknownValueError:
                 print("Sorry, I could not understand the audio.")
                 return None
@@ -45,18 +51,27 @@ def connect_to_nao():
     try:
         
         tts = ALProxy("ALTextToSpeech", "172.16.1.110", 9559)
-        
-        response = CleanResponse(ask_gpt(recognize_speech()))
-        text_encoded = response.encode('utf-8')
+        ourSpeak = recognize_speech()
+        AskAi = ask_gpt(ourSpeak)
+        print(AskAi)
+        response = CleanResponse(AskAi )
+         # Print debug information
+        print("Response before encoding: ", response)  # Check the response
+        print("Type of response:", type(response))  # Should be str or unicode
 
-        tts.say("{}".format(text_encoded))
+        # Ensure response is a Unicode string (Python 3 does this by default)
+        text_encoded = response.encode('utf-8')  # Encode to UTF-8
         
+        print("Encoded response:", text_encoded)  # Print the encoded response for debugging
+
+        # Use the correct format for NAO TTS
+        tts.say(text_encoded)  # Directly use the encoded bytes
     except Exception as e:
         print("Could not connect to NAO: {}".format(e))
 
 
 def CleanResponse (text):
-     return text.replace('*', '').replace('\n', '').replace('...', '').replace('_', '').strip()
+     return text.replace('*', ' ').replace('\n', ' ').replace('...', ' ').replace('_', ' ').strip().encode('utf-8')
 
 
 
